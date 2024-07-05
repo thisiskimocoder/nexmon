@@ -55,6 +55,14 @@ wlc_ioctl_hook(struct wlc_info *wlc, int cmd, char *arg, int len, void *wlc_if)
     int ret = IOCTL_ERROR;
 
     switch (cmd) {
+        case NEX_GET_CONSOLE:
+            struct hnd_debug *hnd_debug = (struct hnd_debug *)hnd_debug_info_get();
+            if (len > 0) {
+                memcpy(arg, hnd_debug->console->buf, len);
+                ret = IOCTL_SUCCESS;
+            }
+            break;
+
         case NEX_GET_CAPABILITIES:
             if (len == 4) {
                 memcpy(arg, &capabilities, 4);

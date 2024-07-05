@@ -1,4 +1,4 @@
-/***************************************************************************
+ww/***************************************************************************
  *                                                                         *
  *          ###########   ###########   ##########    ##########           *
  *         ############  ############  ############  ############          *
@@ -643,6 +643,11 @@ AT(CHIP_VER_BCM43436b0, FW_VER_9_88_0_0, 0x18DA8)
 void
 wlc_bmac_read_tsf(void *wlc_hw, unsigned int *tsf_l_ptr, unsigned int *tsf_h_ptr)
 VOID_DUMMY
+
+AT(CHIP_VER_BCM43436b0, FW_VER_9_88_0_0, 0x243C)
+void *
+hnd_debug_info_get(void)
+RETURN_DUMMY
 
 AT(CHIP_VER_BCM4339, FW_VER_ALL, 0x4DCC8)
 void *
