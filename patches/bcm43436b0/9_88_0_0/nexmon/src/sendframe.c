@@ -15,7 +15,7 @@
  *                                                                         *
  * This file is part of NexMon.                                            *
  *                                                                         *
- * Copyright (c) 2016 NexMon Team                                          *
+ * Copyright (c) 2024 NexMon Team                                          *
  *                                                                         *
  * NexMon is free software: you can redistribute it and/or modify          *
  * it under the terms of the GNU General Public License as published by    *
@@ -34,64 +34,25 @@
 
 #pragma NEXMON targetregion "patch"
 
-#include <firmware_version.h>   // definition of firmware version macros
-#include <debug.h>              // contains macros to access the debug hardware
 #include <wrapper.h>            // wrapper definitions for functions that already exist in the firmware
 #include <structs.h>            // structures that are used by the code in the firmware
-#include <helper.h>             // useful helper functions
 #include <patcher.h>            // macros used to craete patches such as BLPatch, BPatch, ...
 #include <rates.h>              // rates used to build the ratespec for frame injection
-#include <nexioctls.h>          // ioctls added in the nexmon patch
-#include <capabilities.h>       // capabilities included in a nexmon patch
-#include <sendframe.h>          // sendframe functionality
-#include <version.h>            // version information
-#include <argprintf.h>          // allows to execute argprintf to print into the arg buffer
 
-int 
-wlc_ioctl_hook(struct wlc_info *wlc, int cmd, char *arg, int len, void *wlc_if)
+char
+sendframe(struct wlc_info *wlc, struct sk_buff *p, unsigned int fifo, unsigned int rate)
 {
-    argprintf_init(arg, len);
-    int ret = IOCTL_ERROR;
-
-    switch (cmd) {
-        case NEX_GET_CONSOLE:
-        {
-            struct hnd_debug *hnd_debug = (struct hnd_debug *)hnd_debug_info_get();
-            if (len > 0) {
-                memcpy(arg, hnd_debug->console->buf, len);
-                ret = IOCTL_SUCCESS;
-            }
-            break;
-        }
-
-        case NEX_GET_CAPABILITIES:
-            if (len == 4) {
-                memcpy(arg, &capabilities, 4);
-                ret = IOCTL_SUCCESS;
-            }
-            break;
-
-        case NEX_WRITE_TO_CONSOLE:
-            if (len > 0) {
-                arg[len-1] = 0;
-                printf("ioctl: %s\n", arg);
-                ret = IOCTL_SUCCESS;
-            }
-            break;
-
-        case 0x603: // read from memory
-            {
-                memcpy(arg, *(char **) arg, len);
-                ret = IOCTL_SUCCESS;
-            }
-            break;
-
-        default:
-            ret = wlc_ioctl(wlc, cmd, arg, len, wlc_if);
+    char ret;
+    p->scb = wlc->band->hwrs_scb;
+    if (wlc->band->bandtype == WLC_BAND_5G && rate < RATES_RATE_6M) {
+        rate = RATES_RATE_6M;
     }
 
+    if (wlc->hw->up) {
+        ret = wlc_sendctl(wlc, p, wlc->active_queue, wlc->band->hwrs_scb, fifo, rate, 0);
+    } else {
+        ret = wlc_sendctl(wlc, p, wlc->active_queue, wlc->band->hwrs_scb, fifo, rate, 1);
+        printf("ERR: wlc down\n");
+    }
     return ret;
 }
-
-__attribute__((at(0x4CA30, "", CHIP_VER_BCM43436b0, FW_VER_9_88_0_0)))
-GenericPatch4(wlc_ioctl_hook, wlc_ioctl_hook + 1);

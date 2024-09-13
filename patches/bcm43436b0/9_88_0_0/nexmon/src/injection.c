@@ -15,7 +15,7 @@
  *                                                                         *
  * This file is part of NexMon.                                            *
  *                                                                         *
- * Copyright (c) 2016 NexMon Team                                          *
+ * Copyright (c) 2024 NexMon Team                                          *
  *                                                                         *
  * NexMon is free software: you can redistribute it and/or modify          *
  * it under the terms of the GNU General Public License as published by    *
@@ -34,64 +34,73 @@
 
 #pragma NEXMON targetregion "patch"
 
-#include <firmware_version.h>   // definition of firmware version macros
-#include <debug.h>              // contains macros to access the debug hardware
-#include <wrapper.h>            // wrapper definitions for functions that already exist in the firmware
-#include <structs.h>            // structures that are used by the code in the firmware
-#include <helper.h>             // useful helper functions
-#include <patcher.h>            // macros used to craete patches such as BLPatch, BPatch, ...
-#include <rates.h>              // rates used to build the ratespec for frame injection
-#include <nexioctls.h>          // ioctls added in the nexmon patch
-#include <capabilities.h>       // capabilities included in a nexmon patch
-#include <sendframe.h>          // sendframe functionality
-#include <version.h>            // version information
-#include <argprintf.h>          // allows to execute argprintf to print into the arg buffer
+#include <firmware_version.h>
+#include <wrapper.h>
+#include <structs.h>
+#include <patcher.h>
+#include <helper.h>
+#include <ieee80211_radiotap.h>
+#include <sendframe.h>
+#include "d11.h"
+#include "brcm.h"
 
-int 
-wlc_ioctl_hook(struct wlc_info *wlc, int cmd, char *arg, int len, void *wlc_if)
-{
-    argprintf_init(arg, len);
-    int ret = IOCTL_ERROR;
+int
+inject_frame(struct wl_info *wl, sk_buff *p) {
+    int rtap_len = 0;
 
-    switch (cmd) {
-        case NEX_GET_CONSOLE:
-        {
-            struct hnd_debug *hnd_debug = (struct hnd_debug *)hnd_debug_info_get();
-            if (len > 0) {
-                memcpy(arg, hnd_debug->console->buf, len);
-                ret = IOCTL_SUCCESS;
-            }
-            break;
+    //needed for sending:
+    struct wlc_info *wlc = wl->wlc;
+    int data_rate = 0;
+    //Radiotap parsing:
+    struct ieee80211_radiotap_iterator iterator;
+    struct ieee80211_radiotap_header *rtap_header;
+
+    //parse radiotap header
+    rtap_len = *((char *)(p->data + 2));
+
+    rtap_header = (struct ieee80211_radiotap_header *) p->data;
+
+    int ret = ieee80211_radiotap_iterator_init(&iterator, rtap_header, rtap_len, 0);
+
+    while(!ret) {
+        ret = ieee80211_radiotap_iterator_next(&iterator);
+        if(ret) {
+            continue;
         }
-
-        case NEX_GET_CAPABILITIES:
-            if (len == 4) {
-                memcpy(arg, &capabilities, 4);
-                ret = IOCTL_SUCCESS;
-            }
-            break;
-
-        case NEX_WRITE_TO_CONSOLE:
-            if (len > 0) {
-                arg[len-1] = 0;
-                printf("ioctl: %s\n", arg);
-                ret = IOCTL_SUCCESS;
-            }
-            break;
-
-        case 0x603: // read from memory
-            {
-                memcpy(arg, *(char **) arg, len);
-                ret = IOCTL_SUCCESS;
-            }
-            break;
-
-        default:
-            ret = wlc_ioctl(wlc, cmd, arg, len, wlc_if);
+        switch(iterator.this_arg_index) {
+            case IEEE80211_RADIOTAP_RATE:
+                data_rate = (*iterator.this_arg);
+                break;
+            case IEEE80211_RADIOTAP_CHANNEL:
+                //printf("Channel (freq): %d\n", iterator.this_arg[0] | (iterator.this_arg[1] << 8) );
+                break;
+            default:
+                //printf("default: %d\n", iterator.this_arg_index);
+                break;
+        }
     }
 
-    return ret;
+    //remove radiotap header
+    skb_pull(p, rtap_len);
+
+    //inject frame without using the queue
+    sendframe(wlc, p, 1, data_rate);
+
+    return 0;
 }
 
-__attribute__((at(0x4CA30, "", CHIP_VER_BCM43436b0, FW_VER_9_88_0_0)))
-GenericPatch4(wlc_ioctl_hook, wlc_ioctl_hook + 1);
+int
+wl_send_hook(struct hndrte_dev *src, struct hndrte_dev *dev, struct sk_buff *p)
+{
+    struct wl_info *wl = (struct wl_info *) dev->softc;
+    struct wlc_info *wlc = wl->wlc;
+
+    if (wlc->monitor && p != 0 && p->data != 0 && ((short *) p->data)[0] == 0) {
+        return inject_frame(wl, p);
+    } else {
+        return wl_send(src, dev, p);
+    }
+}
+
+__attribute__((at(0x3E4EC, "", CHIP_VER_BCM43436b0, FW_VER_9_88_0_0)))
+GenericPatch4(wl_send_hook, wl_send_hook + 1);
