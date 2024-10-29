@@ -9,7 +9,7 @@ buildtools: FORCE
 	$(Q)make -C $@
 
 clean:
-git reset --hard
-git clean -fd
+	git reset --hard
+	git clean -fd
 
 FORCE:

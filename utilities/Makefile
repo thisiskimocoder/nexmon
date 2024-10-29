@@ -3,11 +3,10 @@ SUBDIRS := $(wildcard */.)
 all: $(SUBDIRS)
 
 $(SUBDIRS):
-	make -C $@
+	$(MAKE) -C $@
 
-install:
-	for dir in $(SUBDIRS); do \
-		make -C $$dir install; \
-	done
+install: $(SUBDIRS)
+	$(MAKE) -C $@ install
 
-.PHONY: all $(SUBDIRS)
+.PHONY: all $(SUBDIRS) install
+
