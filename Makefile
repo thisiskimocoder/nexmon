@@ -8,4 +8,8 @@ buildtools: FORCE
 	@printf "\033[0;31m  BUILDING BUILDTOOLS\033[0m\n"
 	$(Q)make -C $@
 
+clean:
+git reset --hard
+git clean -fd
+
 FORCE:

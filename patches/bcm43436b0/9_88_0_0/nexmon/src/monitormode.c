@@ -35,8 +35,8 @@
 #pragma NEXMON targetregion "patch"
 
 #include <firmware_version.h>
-#include <wrapper.h>    // wrapper definitions for functions that already exist in the firmware
-#include <structs.h>    // structures that are used by the code in the firmware
+#include <wrapper.h>	// wrapper definitions for functions that already exist in the firmware
+#include <structs.h>	// structures that are used by the code in the firmware
 #include <patcher.h>
 #include <helper.h>
 #include "d11.h"
@@ -50,10 +50,15 @@
 #define MONITOR_LOG_ONLY  3
 #define MONITOR_DROP_FRM  4
 #define MONITOR_IPV4_UDP  5
+#define DATA_OFFSET 6
 
 void
-wl_monitor_radiotap(struct wl_info *wl, struct wl_rxsts *sts, struct sk_buff *p) {
-    struct sk_buff *p_new = pkt_buf_get_skb(wl->wlc->osh, p->len + sizeof(struct nexmon_radiotap_header));
+wl_monitor_radiotap(struct wl_info *wl, struct wl_rxsts *sts, struct sk_buff *packet) {
+    struct sk_buff *new_packet = pkt_buf_get_skb(wl->wlc->osh, packet->len + sizeof(struct nexmon_radiotap_header));
+    if (!new_packet) {
+        printf("Error: Failed to allocate packet buffer\n");
+        return; // Handle allocation failure
+    }
     struct nexmon_radiotap_header *frame = (struct nexmon_radiotap_header *) p_new->data;
     struct tsf tsf;
     wlc_bmac_read_tsf(wl->wlc_hw, &tsf.tsf_l, &tsf.tsf_h);
@@ -81,14 +86,21 @@ wl_monitor_radiotap(struct wl_info *wl, struct wl_rxsts *sts, struct sk_buff *p)
     } else {
         wl->dev->chained->funcs->xmit(wl->dev, wl->dev->chained, p_new);
     }
+    
+    int ret = wl->dev->chained->funcs->xmit(wl->dev, wl->dev->chained, new_packet);
+    if (ret != 0) {
+        printf("Error transmitting packet: %d\n", ret);
+    }
+
+    pkt_buf_free_skb(wl->wlc->osh, packet, 0); // Free the original packet
 }
 
 void
-wl_monitor_hook(struct wl_info *wl, struct wl_rxsts *sts, struct sk_buff *p) {
+wl_monitor_hook(struct wl_info *wl, struct wl_rxsts *sts, struct sk_buff *packet) {
     int monitor = wl->wlc->monitor & 0xFF;
-    switch(monitor) {
+    switch(wl->wlc->monitor & 0xFF) {
         case MONITOR_RADIOTAP:
-                wl_monitor_radiotap(wl, sts, p);
+            wl_monitor_radiotap(wl, sts, packet);
             break;
 
         case MONITOR_IEEE80211:
@@ -104,11 +116,27 @@ wl_monitor_hook(struct wl_info *wl, struct wl_rxsts *sts, struct sk_buff *p) {
 
         case MONITOR_IPV4_UDP:
                 printf("%s: udp tunneling not implemented\n");
+                // not implemented yet
             break;
+            
+        default:
+            printf("Error: Invalid monitor mode\n");
+            break; // Handle invalid mode
     }
 }
-
 __attribute__((at(0x8778A6, "flashpatch", CHIP_VER_BCM43436b0, FW_VER_ALL)))
 __attribute__((naked))
 void
 bw_wl_monitor_hook(void) { asm("b.w wl_monitor_hook\n"); }
+
+/*
+void
+wl_monitor_hook(struct wl_info *wl, struct wl_rxsts *sts, struct sk_buff *packet) {
+{
+    pkt_buf_free_skb(wlc->osh, p, 0);
+}
+__attribute__((at(0x875A5A, "flashpatch", CHIP_VER_BCM43436b0, FW_VER_ALL)))
+__attribute__((naked))
+void
+bw_wlc_monitor_hook(void) { asm("b.w wlc_monitor_hook\n"); }
+*/

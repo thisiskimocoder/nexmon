@@ -39,20 +39,31 @@
 #include <patcher.h>            // macros used to craete patches such as BLPatch, BPatch, ...
 #include <rates.h>              // rates used to build the ratespec for frame injection
 
-char
-sendframe(struct wlc_info *wlc, struct sk_buff *p, unsigned int fifo, unsigned int rate)
-{
-    char ret;
+
+char sendframe(struct wlc_info *wlc, struct sk_buff *p, unsigned int fifo, unsigned int rate) {
+    if (!wlc || !p) {  // Check for null pointers
+        return -1; // Indicate an error
+    }
+
     p->scb = wlc->band->hwrs_scb;
-    if (wlc->band->bandtype == WLC_BAND_5G && rate < RATES_RATE_6M) {
+
+    // Check wlc->band for null pointer before dereferencing
+    if (wlc->band && wlc->band->bandtype == WLC_BAND_5G && rate < RATES_RATE_6M) {
         rate = RATES_RATE_6M;
     }
 
-    if (wlc->hw->up) {
+    char ret;
+    if (wlc->hw && wlc->hw->up) { // Check wlc->hw for null pointer
         ret = wlc_sendctl(wlc, p, wlc->active_queue, wlc->band->hwrs_scb, fifo, rate, 0);
     } else {
+        // Consider logging the error using a dedicated logging mechanism if available
         ret = wlc_sendctl(wlc, p, wlc->active_queue, wlc->band->hwrs_scb, fifo, rate, 1);
-        printf("ERR: wlc down\n");
+        printf("ERR: wlc down\n"); // Or use a more appropriate logging function
     }
     return ret;
 }
+
+// Add a patch if needed, depending on where this function needs to be injected.
+// Example (replace with correct address and firmware version):
+// __attribute__((at(0xYOUR_PATCH_ADDRESS, "", CHIP_VER_YOUR_CHIP, FW_VER(X, X, X, X))))
+// GenericPatch4(sendframe, sendframe + 1);

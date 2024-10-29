@@ -32,5 +32,8 @@ ucode_extractor: FORCE
 	@printf "\033[0;31m  BUILDING\033[0m %s\n" $@
 	$(Q)make -C $@
 
+# %/assembler/b43-asm.bin %/disassembler/b43-dasm: FORCE
+# 	@printf "\033[0;31m  BUILDING\033[0m %s\n" $@
+# 	$(Q)make -C $(dir $@)
+
 FORCE:
-	

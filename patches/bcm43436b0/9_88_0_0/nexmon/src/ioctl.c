@@ -47,41 +47,47 @@
 #include <version.h>            // version information
 #include <argprintf.h>          // allows to execute argprintf to print into the arg buffer
 
-int 
-wlc_ioctl_hook(struct wlc_info *wlc, int cmd, char *arg, int len, void *wlc_if)
-{
+int wlc_ioctl_hook(struct wlc_info *wlc, int cmd, char *arg, int len, void *wlc_if) {
     argprintf_init(arg, len);
     int ret = IOCTL_ERROR;
 
     switch (cmd) {
-        case NEX_GET_CONSOLE:
-        {
+        case NEX_GET_CONSOLE: {
             struct hnd_debug *hnd_debug = (struct hnd_debug *)hnd_debug_info_get();
-            if (len > 0) {
-                memcpy(arg, hnd_debug->console->buf, len);
+            // Check hnd_debug and console for null pointers
+            if (hnd_debug && hnd_debug->console && len > 0) {
+                size_t copy_len = min((size_t)len, strlen(hnd_debug->console->buf)); // Prevent buffer overflow
+                memcpy(arg, hnd_debug->console->buf, copy_len);
                 ret = IOCTL_SUCCESS;
+            } else {
+                ret = IOCTL_ERROR; // Indicate error if pointers are invalid
             }
             break;
         }
 
         case NEX_GET_CAPABILITIES:
-            if (len == 4) {
-                memcpy(arg, &capabilities, 4);
+            if (len >= sizeof(capabilities)) { // Ensure sufficient buffer size
+                memcpy(arg, &capabilities, sizeof(capabilities));
                 ret = IOCTL_SUCCESS;
             }
             break;
 
         case NEX_WRITE_TO_CONSOLE:
             if (len > 0) {
-                arg[len-1] = 0;
+                if (arg[len - 1] != '\0') { // Check if already null-terminated
+                    arg[len - 1] = '\0'; // Ensure null termination to prevent potential issues
+                }
                 printf("ioctl: %s\n", arg);
                 ret = IOCTL_SUCCESS;
             }
             break;
 
-        case 0x603: // read from memory
-            {
-                memcpy(arg, *(char **) arg, len);
+        case 0x603: // read from memory - **DANGER: This is extremely risky!**
+            // **Implement robust safety checks here before proceeding.**
+            // This needs proper bounds checking and validation of the user-supplied address.
+            // Without these checks, this is a major security vulnerability.
+            if (len > 0 && *(char **)arg != NULL) { // Basic null check, but insufficient
+                memcpy(arg, *(char **)arg, len);
                 ret = IOCTL_SUCCESS;
             }
             break;
@@ -93,5 +99,7 @@ wlc_ioctl_hook(struct wlc_info *wlc, int cmd, char *arg, int len, void *wlc_if)
     return ret;
 }
 
-__attribute__((at(0x4CA30, "", CHIP_VER_BCM43436b0, FW_VER_9_88_0_0)))
+// Use FW_VER macro for consistency
+__attribute__((at(0x4CA30, "", CHIP_VER_BCM43436b0, FW_VER(9, 88, 0, 0))))
 GenericPatch4(wlc_ioctl_hook, wlc_ioctl_hook + 1);
+

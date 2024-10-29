@@ -35,5 +35,10 @@
 #pragma once
 
 #include "../include/types.h"
-#define WL_CHANSPEC_CHAN_MASK       0x00ff
-#define CHSPEC_CHANNEL(chspec)  ((uint8_t)((chspec) & WL_CHANSPEC_CHAN_MASK))
+
+// Use descriptive names for better readability
+#define WL_CHANSPEC_CHANNEL_MASK        0x00ff
+#define WL_CHANSPEC_GET_CHANNEL(chspec)  ((uint8_t)((chspec) & WL_CHANSPEC_CHANNEL_MASK))
+
+// Consider adding a macro to check channel validity
+#define WL_CHANSPEC_IS_CHANNEL_VALID(channel) ((channel) >= 1 && (channel) <= 14) // Example for 2.4 GHz channels

@@ -34,22 +34,29 @@
 
 #pragma once
 
+#include <stdint.h> // Include for standard integer types
+
+// Use descriptive names for better readability and consistency
 struct d11rxhdr {
-	unsigned short RxFrameSize;			/* Actual byte length of the frame data received */
-	unsigned short PAD;
-	unsigned short PhyRxStatus_0;		/* PhyRxStatus 15:0 */
-	unsigned short PhyRxStatus_1;		/* PhyRxStatus 31:16 */
-	unsigned short PhyRxStatus_2;		/* PhyRxStatus 47:32 */
-	unsigned short PhyRxStatus_3;		/* PhyRxStatus 63:48 */
-	unsigned short PhyRxStatus_4;		/* PhyRxStatus 79:64 */
-	unsigned short PhyRxStatus_5;		/* PhyRxStatus 95:80 */
-	unsigned short RxStatus1;			/* MAC Rx status */
-	unsigned short RxStatus2;			/* extended MAC Rx status */
-	unsigned short RxTSFTime;			/* RxTSFTime time of first MAC symbol + M_PHY_PLCPRX_DLY */
-	unsigned short RxChan;				/* gain code, channel radio code, and phy type -> looks like chanspec */
+    uint16_t rx_frame_size;        // Actual byte length of the frame data received
+    uint16_t pad;                 // Padding
+    uint16_t phy_rx_status_0;     // PhyRxStatus 15:0
+    uint16_t phy_rx_status_1;     // PhyRxStatus 31:16
+    uint16_t phy_rx_status_2;     // PhyRxStatus 47:32
+    uint16_t phy_rx_status_3;     // PhyRxStatus 63:48
+    uint16_t phy_rx_status_4;     // PhyRxStatus 79:64
+    uint16_t phy_rx_status_5;     // PhyRxStatus 95:80
+    uint16_t rx_status_1;         // MAC Rx status
+    uint16_t rx_status_2;         // Extended MAC Rx status
+    uint16_t rx_tsf_time;         // RxTSFTime time of first MAC symbol + M_PHY_PLCPRX_DLY
+    uint16_t rx_chan;             // Gain code, channel radio code, and phy type -> looks like chanspec
 } __attribute__((packed));
 
- /* ucode RxStatus1: */
+// Macros for RxStatus1
+#define D11RXHDR_GET_BCNSENT(rxhdr)      ((rxhdr)->rx_status_1 & RXS_BCNSENT)
+#define D11RXHDR_GET_SECKINDX(rxhdr)     (((rxhdr)->rx_status_1 & RXS_SECKINDX_MASK) >> RXS_SECKINDX_SHIFT)
+
+/* ucode RxStatus1: */
 #define RXS_BCNSENT             0x8000
 #define RXS_SECKINDX_MASK       0x07e0
 #define RXS_SECKINDX_SHIFT      5
@@ -68,6 +75,12 @@ struct d11rxhdr {
 #define RXS_RXANT_MASK          0x3
 #define RXS_RXANT_SHIFT         12
 
+// Macros for RxChan
+#define D11RXHDR_IS_40MHZ(rxhdr)        ((rxhdr)->rx_chan & RXS_CHAN_40)
+#define D11RXHDR_IS_5GHZ(rxhdr)        ((rxhdr)->rx_chan & RXS_CHAN_5G)
+#define D11RXHDR_GET_CHANNEL(rxhdr)     (((rxhdr)->rx_chan & RXS_CHAN_ID_MASK) >> RXS_CHAN_ID_SHIFT)
+#define D11RXHDR_GET_PHYTYPE(rxhdr)     (((rxhdr)->rx_chan & RXS_CHAN_PHYTYPE_MASK) >> RXS_CHAN_PHYTYPE_SHIFT)
+
 /* RxChan */
 #define RXS_CHAN_40             0x1000
 #define RXS_CHAN_5G             0x0800
@@ -76,13 +89,13 @@ struct d11rxhdr {
 #define RXS_CHAN_PHYTYPE_MASK   0x0007
 #define RXS_CHAN_PHYTYPE_SHIFT  0
 
+// Extended receive header
 struct wlc_d11rxhdr {
-	struct d11rxhdr rxhdr;
-	unsigned int tsf_l;
-	char rssi;							/* computed instanteneous RSSI in BMAC */
-	char rxpwr0;
-	char rxpwr1;
-	char do_rssi_ma;					/* do per-pkt sampling for per-antenna ma in HIGH */
-	char rxpwr[4];						/* rssi for supported antennas */
+    struct d11rxhdr rxhdr;
+    uint32_t tsf_l;
+    int8_t rssi;                  // Computed instantaneous RSSI in BMAC
+    int8_t rxpwr0;
+    int8_t rxpwr1;
+    int8_t do_rssi_ma;           // Do per-pkt sampling for per-antenna ma in HIGH
+    int8_t rxpwr[4];              // RSSI for supported antennas
 } __attribute__((packed));
-

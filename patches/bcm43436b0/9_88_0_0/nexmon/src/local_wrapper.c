@@ -37,24 +37,23 @@
 
 #include <firmware_version.h>
 #include <structs.h>
-#include <stdarg.h>
+#include <stdarg.h> // Include this if variadic functions are used
 
+// More descriptive macro names
 #ifndef WRAPPER_H
-    // if this file is not included in the wrapper.h file, create dummy functions
-    #define VOID_DUMMY { ; }
-    #define RETURN_DUMMY { ; return 0; }
-
-    #define AT(CHIPVER, FWVER, ADDR) __attribute__((weak, at(ADDR, "dummy", CHIPVER, FWVER)))
+    #define DECLARE_DUMMY_VOID { (void)0; } // More standard way to ignore unused parameters
+    #define DECLARE_DUMMY_RETURN { (void)0; return 0; }
+    #define ATTRIBUTE_DUMMY(CHIPVER, FWVER, ADDR) __attribute__((weak, at(ADDR, "dummy", CHIPVER, FWVER)))
 #else
-    // if this file is included in the wrapper.h file, create prototypes
-    #define VOID_DUMMY ;
-    #define RETURN_DUMMY ;
-    #define AT(CHIPVER, FWVER, ADDR)
+    #define DECLARE_DUMMY_VOID ;
+    #define DECLARE_DUMMY_RETURN ;
+    #define ATTRIBUTE_DUMMY(CHIPVER, FWVER, ADDR)
 #endif
 
 
-#undef VOID_DUMMY
-#undef RETURN_DUMMY
-#undef AT
+// Undefining macros is good practice
+#undef DECLARE_DUMMY_VOID
+#undef DECLARE_DUMMY_RETURN
+#undef ATTRIBUTE_DUMMY
 
-#endif /*LOCAL_WRAPPER_C*/
+#endif /* LOCAL_WRAPPER_C */

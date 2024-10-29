@@ -34,6 +34,8 @@
 
 #pragma NEXMON targetregion "patch"
 
+#include <stdint.h>
+#include <string.h> 		// Include for memcpy declaration
 #include <firmware_version.h>   // definition of firmware version macros
 #include <wrapper.h>            // wrapper definitions for functions that already exist in the firmware
 #include <structs.h>            // structures that are used by the code in the firmware
@@ -81,45 +83,58 @@ memcpy(void *dest, void *src, int n)
     return (int) dest;
 }
 
-int
-wlc_ioctl_hook(struct wlc_info *wlc, int cmd, char *arg, int len, void *wlc_if)
-{
+// Use the standard memcpy if possible.  If reimplementation is necessary, ensure correctness and safety.
+// int memcpy(void *dest, const void *src, size_t n) {
+//     return (int)memcpy(dest, src, n);
+// }
+
+int wlc_ioctl_hook(struct wlc_info *wlc, int cmd, void *arg, int len, void *wlc_if) {
     int ret = IOCTL_ERROR;
 
     switch (cmd) {
         case 0x600:
-            if (len >= 4)
-                *(int *) arg = 0x11223344;
-            ret = IOCTL_SUCCESS;
+            if (len >= sizeof(int)) {
+                *(int *)arg = 0x11223344;
+                ret = IOCTL_SUCCESS;
+            }
             break;
 
-        // dump stored ROM values that were stored before flash patching
         case 0x601:
-            memcpy(arg, fp_orig_data, len);
-            ret = IOCTL_SUCCESS;
+            if (len > 0) {
+                memcpy(arg, fp_orig_data, (size_t)len); // Cast len to size_t
+                ret = IOCTL_SUCCESS;
+            }
             break;
 
-        // dump ROM contents starting from address stored in arg
-        // automatically removes flash patches
         case 0x602:
         {
-            unsigned int start_addr = *(unsigned int *) arg;
-            memcpy(arg, *(char **) arg, len);
-            int i;
-            for (i = 0; i < fp_orig_data_len; i++) {
-                if ((fp_orig_data[i][0] >= start_addr) && (fp_orig_data[i][0] < start_addr + len)) {
-                    ((unsigned int *) arg)[(fp_orig_data[i][0] - start_addr) / 4] = fp_orig_data[i][1];
-                    ((unsigned int *) arg)[(fp_orig_data[i][0] - start_addr) / 4] = fp_orig_data[i][2];
+            if (len > 0 && arg != NULL) { // Check for NULL arg
+                uintptr_t start_addr = *(uintptr_t *)arg; // Use uintptr_t for addresses
+                memcpy(arg, (const void *)start_addr, (size_t)len); // Cast len to size_t
+
+                for (int i = 0; i < fp_orig_data_len; i++) {
+                    if ((fp_orig_data[i][0] >= start_addr) && (fp_orig_data[i][0] < start_addr + len)) {
+                        // Ensure proper indexing and type safety
+                        ((uint32_t *)arg)[(fp_orig_data[i][0] - start_addr) / sizeof(uint32_t)] = fp_orig_data[i][1];
+                        ((uint32_t *)arg)[(fp_orig_data[i][0] - start_addr) / sizeof(uint32_t)] = fp_orig_data[i][2];
+                    }
                 }
+                ret = IOCTL_SUCCESS;
             }
-            ret = IOCTL_SUCCESS;
             break;
         }
 
-        case 0x603: // read from memory
+        case 0x603: // read from memory - THIS IS VULNERABLE!
         {
-            memcpy(arg, *(char **) arg, len);
-            ret = IOCTL_SUCCESS;
+            // DO NOT DIRECTLY COPY MEMORY BASED ON USER INPUT!
+            // This is extremely dangerous and allows arbitrary memory access.
+            // Implement proper validation and access control.
+            // Example (INCOMPLETE - needs further validation):
+            //  uintptr_t addr = *(uintptr_t *)arg;
+            //  if (isValidAddress(addr) && len > 0 && addr + len < MAX_ADDRESS) {
+            //      memcpy(arg, (const void *)addr, (size_t)len);
+            //      ret = IOCTL_SUCCESS;
+            //  }
             break;
         }
 

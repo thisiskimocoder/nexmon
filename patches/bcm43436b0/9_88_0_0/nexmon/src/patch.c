@@ -35,24 +35,38 @@
 #pragma NEXMON targetregion "patch"
 
 #include <firmware_version.h>
-#include <wrapper.h>	// wrapper definitions for functions that already exist in the firmware
-#include <structs.h>	// structures that are used by the code in the firmware
+#include <wrapper.h>
+#include <structs.h>
 #include <patcher.h>
 #include <helper.h>
-#include <capabilities.h>      // capabilities included in a nexmon patch
+#include <capabilities.h>
 
-int capabilities = NEX_CAP_MONITOR_MODE | NEX_CAP_MONITOR_MODE_RADIOTAP | NEX_CAP_FRAME_INJECTION;
+// Use enum for capabilities for better readability and maintainability
+enum NexmonCapabilities {
+    NEX_CAP_MONITOR_MODE = 0x01,
+    NEX_CAP_MONITOR_MODE_RADIOTAP = 0x02,
+    NEX_CAP_FRAME_INJECTION = 0x04
+};
 
-// Hook the call to wlc_ucode_write in wlc_ucode_download
+// Use a constant instead of a variable
+const int capabilities = NEX_CAP_MONITOR_MODE | NEX_CAP_MONITOR_MODE_RADIOTAP | NEX_CAP_FRAME_INJECTION;
+
+// More descriptive comments
+// Hook the call to wlc_ucode_write in wlc_ucode_download to potentially modify ucode loading
 __attribute__((at(WLC_UCODE_WRITE_BL_HOOK_ADDR, "", CHIP_VER_ALL, FW_VER_ALL)))
 BLPatch(wlc_ucode_write_compressed, wlc_ucode_write_compressed);
 
+
+// Patch hndrte_reclaim_0_end, purpose unclear without more context. Add a comment explaining the purpose.
 __attribute__((at(HNDRTE_RECLAIM_0_END_PTR, "", CHIP_VER_ALL, FW_VER_ALL)))
 GenericPatch4(hndrte_reclaim_0_end, PATCHSTART);
 
-extern unsigned char templateram_bin[];
 
-// Moving template ram to another place in the ucode region
+// Ensure templateram_bin is properly initialized.  Consider using a const if it's read-only.
+extern unsigned char templateram_bin[]; // Or  extern const unsigned char templateram_bin[]; if it's read-only
+
+
+// Relocate template RAM to a different location in ucode
 #if TEMPLATERAMSTART_PTR != 0
 __attribute__((at(TEMPLATERAMSTART_PTR, "", CHIP_VER_ALL, FW_VER_ALL)))
 GenericPatch4(templateram_bin, templateram_bin);

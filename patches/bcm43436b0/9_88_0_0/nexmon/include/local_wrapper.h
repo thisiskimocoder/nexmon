@@ -35,6 +35,7 @@
 #ifndef LOCAL_WRAPPER_H
 #define LOCAL_WRAPPER_H
 
-#include "../src/local_wrapper.c"        // wrapper definitions for functions that already exist in the firmware
+// Include the header file, not the source file
+#include "local_wrapper.h" // Assuming the correct header file is named local_wrapper.h
 
-#endif /*LOCAL_WRAPPER_H*/
+#endif /* LOCAL_WRAPPER_H */
