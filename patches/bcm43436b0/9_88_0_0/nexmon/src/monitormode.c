@@ -127,6 +127,7 @@ void log_packet_details(struct sk_buff *p) {
 }
 
 void wl_monitor_radiotap(struct wl_info *wl, struct wl_rxsts *sts, struct sk_buff *p) {
+    // Allocate memory for the new packet, with error checking
     struct sk_buff *p_new = pkt_buf_get_skb(wl->wlc->osh, p->len + sizeof(struct nexmon_radiotap_header));
     if (!p_new) {
         log_message(LOG_LEVEL_ERROR, "Failed to allocate memory for new packet\n");
@@ -135,7 +136,13 @@ void wl_monitor_radiotap(struct wl_info *wl, struct wl_rxsts *sts, struct sk_buf
 
     struct nexmon_radiotap_header *frame = (struct nexmon_radiotap_header *) p_new->data;
     struct tsf tsf;
-    wlc_bmac_read_tsf(wl->wlc_hw, &tsf.tsf_l, &tsf.tsf_h);
+
+    // Read the TSF from the hardware
+    if (wlc_bmac_read_tsf(wl->wlc_hw, &tsf.tsf_l, &tsf.tsf_h) != 0) {
+        log_message(LOG_LEVEL_ERROR, "Failed to read TSF\n");
+        pkt_buf_free_skb(wl->wlc->osh, p_new, 0); // Free the allocated packet buffer
+        return; // Early exit on error
+    }
 
     frame->header.it_version = 0;
     frame->header.it_pad = 0;
@@ -152,9 +159,18 @@ void wl_monitor_radiotap(struct wl_info *wl, struct wl_rxsts *sts, struct sk_buf
     frame->chan_freq = wlc_phy_channel2freq(CHSPEC_CHANNEL(sts->chanspec));
     frame->chan_flags = 0;
     frame->dbm_antsignal = sts->signal;
+
+    // Check if data copying is successful
+    if (p->len < 6) {
+        log_message(LOG_LEVEL_ERROR, "Insufficient packet length for data copy\n");
+        pkt_buf_free_skb(wl->wlc->osh, p_new, 0); // Free the allocated packet buffer
+        return; // Early exit on error
+    }
+
     memcpy(p_new->data + sizeof(struct nexmon_radiotap_header), p->data + 6, p->len - 6);
     p_new->len -= 6;
 
+    // Transmit the new packet
     if (wl->wlc->wlcif_list->next) {
         wl->wlc->wlcif_list->wlif->dev->chained->funcs->xmit(wl->wlc->wlcif_list->wlif->dev, wl->wlc->wlcif_list->wlif->dev->chained, p_new);
     } else {
