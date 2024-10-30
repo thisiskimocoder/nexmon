@@ -7,6 +7,8 @@
  *
  *************/
 
+#include <stdint.h>
+#include <stdbool.h>
 #include <types.h>
 
 #ifndef	PAD
@@ -54,22 +56,36 @@ struct osl_info {
 	unsigned int bustype;
 } __attribute__((packed));
 
+struct sk_buff {
+    struct sk_buff *next_buff;   // More descriptive name
+    struct sk_buff *head;
+    void *data;
+    uint16_t len;            // Use standard types
+    uint16_t data_len;          // If needed, add a separate length for just data
+    uint32_t timestamp;          // Or other relevant metadata
+    struct sk_buff *prev;
+    uint32_t flags;        // Combine padding with potential flags
+    void *scb;                 // Station Control Block pointer? Add a comment!
+}; // No packing attribute unless absolutely necessary
+
 /* CHECKED */
+/*
 typedef struct sk_buff {
-    struct sk_buff *unkn;        /* 0x00 */
-    struct sk_buff *head;        /* 0x04 */
-	void *data;                 /* 0x08 */
-	short len;                  /* 0x0c */
-    short PAD;                  /* 0x0e */
-    int PAD;                    /* 0x10 */
-    short PAD;                  /* 0x14 */
-    struct sk_buff *prev;       /* 0x16 */
-    short PAD;                  /* 0x1a */
-    int PAD;                    /* 0x1c */
-    int PAD;                    /* 0x20 */
-    int PAD;                    /* 0x24 */
-    void *scb;                  /* 0x28 */
+    struct sk_buff *unkn;        // 0x00
+    struct sk_buff *head;        // 0x04
+	void *data;                 // 0x08
+	short len;                  // 0x0c
+    short PAD;                  // 0x0e
+    int PAD;                    // 0x10
+    short PAD;                  // 0x14
+    struct sk_buff *prev;       // 0x16
+    short PAD;                  // 0x1a
+    int PAD;                    // 0x1c
+    int PAD;                    // 0x20
+    int PAD;                    // 0x24
+    void *scb;                  // 0x28
 } __attribute__((packed)) sk_buff;
+*/
 
 struct tunables {
     char gap[62];
