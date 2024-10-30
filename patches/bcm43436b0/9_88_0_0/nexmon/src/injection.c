@@ -44,54 +44,81 @@
 #include "d11.h"
 #include "brcm.h"
 
-int
-inject_frame(struct wl_info *wl, sk_buff *p) {
-    int rtap_len = 0;
+// Debugging configuration
+#define VERBOSE_DEBUG 1  // Set to 1 for detailed debug output; 0 for minimal output
+#define HEX_DUMP 1        // Set to 1 to enable hex dump; 0 to disable
+#define RETRY_ENABLED 1
+#if RETRY_ENABLED
+#define RETRY_LIMIT 3
+#endif
 
-    //needed for sending:
+void print_hex(const char *desc, const void *addr, int len) {
+    if (HEX_DUMP) {
+        printf("%s: ", desc);
+        const unsigned char *p = addr;
+        for (int i = 0; i < len; i++) {
+            printf("%02X ", p[i]);
+        }
+        printf("\n");
+    }
+}
+
+int inject_frame(struct wl_info *wl, sk_buff *p) {
+    int rtap_len = 0;
     struct wlc_info *wlc = wl->wlc;
     int data_rate = 0;
-    //Radiotap parsing:
+
     struct ieee80211_radiotap_iterator iterator;
     struct ieee80211_radiotap_header *rtap_header;
 
-    //parse radiotap header
     rtap_len = *((char *)(p->data + 2));
-
     rtap_header = (struct ieee80211_radiotap_header *) p->data;
+
+    if (VERBOSE_DEBUG) {
+        printf("RTAP length: %d\n", rtap_len);
+        print_hex("RTAP header", rtap_header, rtap_len);
+    }
 
     int ret = ieee80211_radiotap_iterator_init(&iterator, rtap_header, rtap_len, 0);
 
-    while(!ret) {
+    while (!ret) {
         ret = ieee80211_radiotap_iterator_next(&iterator);
-        if(ret) {
+        if (ret) {
             continue;
         }
-        switch(iterator.this_arg_index) {
+        switch (iterator.this_arg_index) {
             case IEEE80211_RADIOTAP_RATE:
                 data_rate = (*iterator.this_arg);
+                printf("Data rate: %d\n", data_rate);
                 break;
             case IEEE80211_RADIOTAP_CHANNEL:
-                //printf("Channel (freq): %d\n", iterator.this_arg[0] | (iterator.this_arg[1] << 8) );
+                int channel_freq = iterator.this_arg[0] | (iterator.this_arg[1] << 8);
+                printf("Channel (freq): %d\n", channel_freq);
                 break;
             default:
-                //printf("default: %d\n", iterator.this_arg_index);
+                printf("Unhandled field index: %d\n", iterator.this_arg_index);
                 break;
         }
     }
 
-    //remove radiotap header
     skb_pull(p, rtap_len);
 
-    //inject frame without using the queue
-    sendframe(wlc, p, 1, data_rate);
+    int retries = RETRY_ENABLED ? RETRY_LIMIT : 1;
+    for (int attempt = 0; attempt < retries; ++attempt) {
+        int success = sendframe(wlc, p, 1, data_rate);
+        if (success == 0) {
+            printf("Frame sent successfully on attempt %d\n", attempt + 1);
+            break;  // Exit if sendframe succeeds
+        }
+        if (attempt == retries - 1) {
+            printf("Send failed after %d attempts, error code: %d\n", retries, success);
+        }
+    }
 
     return 0;
 }
 
-int
-wl_send_hook(struct hndrte_dev *src, struct hndrte_dev *dev, struct sk_buff *p)
-{
+int wl_send_hook(struct hndrte_dev *src, struct hndrte_dev *dev, struct sk_buff *p) {
     struct wl_info *wl = (struct wl_info *) dev->softc;
     struct wlc_info *wlc = wl->wlc;
 
