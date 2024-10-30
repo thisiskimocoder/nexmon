@@ -1,18 +1,25 @@
+# Define compiler based on OS
+ifeq ($(HOSTUNAME), Darwin)
+    CC := gcc-mp-5
+    LDFLAGS := -L/opt/local/lib -largp
+else
+    CC := gcc
+endif
+
+# General CFLAGS
+CFLAGS := -std=c99 -Wall -Wno-unused-result -O0 -D_BSD_SOURCE
+
+# Target
 ucodeext: ucodeext.o
-ifeq ($(HOSTUNAME),Darwin)
-	gcc-mp-5 -L/opt/local/lib -largp -o $@ $^
-else
-	gcc -o $@ $^
-endif
+	$(CC) $(LDFLAGS) -o $@ $^
 
+# Object file rule
 ucodeext.o: ucodeext.c
-ifeq ($(HOSTUNAME),Darwin)
-	gcc-mp-5 -std=c99 -Wall -Wno-unused-result -O0 -D_BSD_SOURCE -o $@ -c $<
-else
-	gcc -std=c99 -Wall -Wno-unused-result -O0 -D_BSD_SOURCE -o $@ -c $<
-endif
+	$(CC) $(CFLAGS) -o $@ -c $<
 
-clean: FORCE
-	rm -f *.o
+# Clean rule
+clean:
+	rm -f *.o ucodeext
 
-FORCE:
+# Force target to ensure clean works as expected
+.PHONY: clean

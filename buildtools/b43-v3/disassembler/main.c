@@ -92,7 +92,7 @@ static const char * gen_raw_code(unsigned int operand)
 	char *ret;
 
 	ret = xmalloc(6);
-	snprintf(ret, 6, "@%X", operand);
+	snprintf(ret, 11, "@0x%X", operand);
 
 	return ret;
 }
@@ -102,7 +102,7 @@ static const char * disasm_mem_operand(unsigned int operand)
 	char *ret;
 
 	ret = xmalloc(9);
-	snprintf(ret, 9, "[0x%X]", operand);
+	snprintf(ret, 15, "[0x%X]", operand);
 
 	return ret;
 }
