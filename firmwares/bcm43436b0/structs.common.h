@@ -56,6 +56,7 @@ struct osl_info {
 	unsigned int bustype;
 } __attribute__((packed));
 
+/*
 struct sk_buff {
     struct sk_buff *next_buff;   // More descriptive name
     struct sk_buff *head;
@@ -67,9 +68,9 @@ struct sk_buff {
     uint32_t flags;        // Combine padding with potential flags
     void *scb;                 // Station Control Block pointer? Add a comment!
 }; // No packing attribute unless absolutely necessary
+*/
 
 /* CHECKED */
-/*
 typedef struct sk_buff {
     struct sk_buff *unkn;        // 0x00
     struct sk_buff *head;        // 0x04
@@ -85,7 +86,6 @@ typedef struct sk_buff {
     int PAD;                    // 0x24
     void *scb;                  // 0x28
 } __attribute__((packed)) sk_buff;
-*/
 
 struct tunables {
     char gap[62];
