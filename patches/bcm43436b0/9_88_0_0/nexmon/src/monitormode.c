@@ -69,6 +69,8 @@
 #include <structs.h>  // structures that are used by the code in the firmware
 #include <patcher.h>
 #include <helper.h>
+#include <brcm.h>
+#include <d11.h>
 #include <ieee80211_radiotap.h>
 
 #define MONITOR_DISABLED  0
