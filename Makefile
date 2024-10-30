@@ -12,7 +12,7 @@ clean:
 	@echo "Not implemented, use 'make reset' for git reset/clean"
 
 reset:
-	git reset --hard
-	git clean -fd
+	@git reset --hard
+	@git clean -fd
 
 FORCE:
