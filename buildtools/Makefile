@@ -39,8 +39,8 @@ ifeq ($(shell uname -m),$(filter $(shell uname -m), armv6l armv7l aarch64))
 	$(Q)make -C $@-arm
 endif
 
-# %/assembler/b43-asm.bin %/disassembler/b43-dasm: FORCE
-# 	@printf "\033[0;31m  BUILDING\033[0m %s\n" $@
-# 	$(Q)make -C $(dir $@)
+%/assembler/b43-asm.bin %/disassembler/b43-dasm: FORCE
+	@printf "\033[0;31m  BUILDING\033[0m %s\n" $@
+	$(Q)make -C $(dir $@)
 
 FORCE:
