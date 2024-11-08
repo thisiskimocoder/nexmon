@@ -1,7 +1,6 @@
-#if TARGET_CXX_VERSION >= 6
 #include <gcc-plugin.h>
 #include <plugin-version.h>
-#else
+#if (GCCPLUGIN_VERSION < 6000)
 #include <plugin.h>
 #endif
 #include <tree.h>
@@ -33,7 +32,7 @@ static struct attribute_spec user_attr =
 	.decl_required = true,
 	.type_required = false,
 	.function_type_required = false,
-#if (GCCPLUGIN_VERSION >= 6)
+#if (GCCPLUGIN_VERSION >= 8000)
 	.affects_type_identity = false,
 	.handler = handle_nexmon_place_at_attribute,
 #else
