@@ -8,13 +8,13 @@ libs/arm64-v8a/dhdutil: *.c *.h Android.mk
 
 install: libs/armeabi/dhdutil
 	adb push $< /sdcard/
-	adb shell 'su -c "mount -o rw,remount /system"'
+	adb shell 'su -c "mount -o rw,remount /system/bin"'
 	adb shell 'su -c "cp /sdcard/dhdutil /system/bin/dhdutil"'
 	adb shell 'su -c "chmod +x /system/bin/dhdutil"'
 
 install: libs/arm64-v8a/dhdutil
 	adb push $< /sdcard/
-	adb shell 'su -c "mount -o rw,remount /system"'
+	adb shell 'su -c "mount -o rw,remount /system/bin"'
 	adb shell 'su -c "cp /sdcard/dhdutil /system/bin/dhdutil"'
 	adb shell 'su -c "chmod +x /system/bin/dhdutil"'
 

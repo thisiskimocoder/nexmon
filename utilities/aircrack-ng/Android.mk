@@ -223,4 +223,3 @@ LOCAL_CFLAGS		+= $(MY_CFLAGS)
 LOCAL_SRC_FILES		:= $(MY_OBJS_WC)
 LOCAL_STATIC_LIBRARIES  += libosdep libssl libcrypto
 include $(BUILD_EXECUTABLE)
-
